@@ -8,12 +8,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 
-Route::group([
-    'middleware' => 'api',
-    'prefix' => 'auth'
+Route::post('/auth/login', [AuthController::class, 'login']);
 
+Route::group([
+    'middleware' => ['jwt.verify'],
+    'prefix' => 'auth'
 ], function ($router) {
-    Route::post('/login', [AuthController::class, 'login']);
     Route::get('/log-out', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::get('/user-profile', [AuthController::class, 'userProfile']);

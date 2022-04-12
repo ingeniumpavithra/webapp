@@ -6,7 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Validator;
-
+use JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class AuthController extends Controller
 {
@@ -16,7 +17,6 @@ class AuthController extends Controller
      * @return void
      */
     public function __construct() {
-        $this->middleware('auth:api', ['except' => ['login', 'register']]);
     }
 
     /**
@@ -25,20 +25,44 @@ class AuthController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
     public function login(Request $request){
-    	$validator = Validator::make($request->all(), [
+
+        $credentials = $request->only('email', 'password');
+
+        //valid credential
+        $validator = Validator::make($credentials, [
             'email' => 'required',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string|min:6'
         ]);
 
+        //Send failed response if request is not valid
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json(['error' => $validator->messages()], 200);
         }
-
-        if (! $token = auth()->attempt($validator->validated())) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+        //Request is validated
+        //Crean token
+        $user = [];
+        $token = '';
+        try {
+            $token = JWTAuth::attempt($credentials);
+            if (!$token) {
+                return response()->json([
+                	'success' => false,
+                	'message' => 'Login credentials are invalid.',
+                ], 400);
+            }
+            $user = Auth::user();
+        } catch (JWTException $e) {
+            return response()->json([
+                	'success' => false,
+                	'message' => 'Could not create token.',
+                ], 500);
         }
-
-        return $this->createNewToken($token);
+ 		//Token created, return with success response and jwt token
+        return response()->json([
+            'success' => true,
+            'access_token' => $token,
+            'user' => $user
+        ]);
     }
 
     /**
